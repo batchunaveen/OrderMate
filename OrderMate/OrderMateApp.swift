@@ -5,6 +5,8 @@
 //  Created by Naveen on 8/3/25.
 //
 
+//MARK: - OrderMateApp
+import CoreData
 import SwiftUI
 
 @main

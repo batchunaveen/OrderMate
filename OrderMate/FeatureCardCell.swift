@@ -1,5 +1,6 @@
 import UIKit
 
+// MARK: - FeatureCardCell
 class FeatureCardCell: UICollectionViewCell {
 
     private let blurView: UIVisualEffectView = {

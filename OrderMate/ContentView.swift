@@ -8,15 +8,16 @@
 import SwiftUI
 import CoreData
 
+// MARK: - ContentView
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
 
     // Dashboard features with icons and light tints
     private let features: [(title: String, icon: String, destination: AnyView, tint: Color)] = [
-        ("Orders", "cart", AnyView(OrdersView()), Color.purple.opacity(0.2)),
-        ("Menu", "fork.knife", AnyView(MenuView()), Color.orange.opacity(0.2)),
-        ("Reports", "chart.bar", AnyView(ReportsView()), Color.teal.opacity(0.2)),
-        ("Locations", "map", AnyView(Text("Coming Soon")), Color.indigo.opacity(0.2)),
+        ("Orders", "cart", AnyView(OrdersView()), Color.purple.opacity(0.25)),
+        ("Menu", "fork.knife", AnyView(MenuView()), Color.orange.opacity(0.23)),
+        ("Reports", "chart.bar", AnyView(ReportsView()), Color.teal.opacity(0.21)),
+        ("Locations", "map", AnyView(Text("Coming Soon")), Color.indigo.opacity(0.19)),
         ("Settings", "gear", AnyView(Text("Coming Soon")), Color.gray.opacity(0.2))
     ]
 
@@ -69,8 +70,7 @@ struct ContentView: View {
     }
 }
 
-// MARK: - GlassCard View
-
+// MARK: - GlassCard View (with Liquid Glass)
 struct GlassCard: View {
     var icon: String
     var title: String
@@ -78,30 +78,23 @@ struct GlassCard: View {
 
     var body: some View {
         ZStack {
+            // Paste the colored tint as the background for the liquid glass
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(tint)
-                        .blur(radius: 10)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 4)
-                .frame(height: 140)
+                .fill(tint)
+                .blur(radius: 2)
 
             VStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.system(size: 32, weight: .semibold))
                     .foregroundColor(.primary)
-
                 Text(title)
                     .font(.headline)
                     .foregroundColor(.primary)
             }
+            .frame(maxWidth: .infinity, minHeight: 140)
+            .glassBackground() // <-- Apple's new liquid glass!
         }
+        .frame(height: 140)
         .padding(.horizontal, 4)
     }
 }

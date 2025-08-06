@@ -5,6 +5,8 @@
 //  Created by Naveen on 8/4/25.
 //
 
+//MARK: - PDFFile
+import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 

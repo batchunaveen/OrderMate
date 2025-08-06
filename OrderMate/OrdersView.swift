@@ -24,7 +24,8 @@ struct OrdersView: View {
         entity: Order.entity(),
         sortDescriptors: [NSSortDescriptor(keyPath: \Order.createdAt, ascending: false)],
         animation: .default
-    ) private var orders: FetchedResults<Order>
+    )
+    private var orders: FetchedResults<Order>
 
     @State private var showExporter = false
     @State private var pdfURL: URL?
@@ -55,7 +56,7 @@ struct OrdersView: View {
 
     var body: some View {
         ZStack {
-            // Glassy pastel background for both modes
+            // Lively gradient background (edit colors as you like)
             LinearGradient(
                 gradient: Gradient(colors: [
                     Color(.systemIndigo).opacity(0.13),
@@ -81,9 +82,7 @@ struct OrdersView: View {
                     }
                     .buttonStyle(.bordered)
 
-                    Button(action: {
-                        showNewOrderForm = true
-                    }) {
+                    Button(action: { showNewOrderForm = true }) {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
                     }
@@ -103,7 +102,7 @@ struct OrdersView: View {
 
                 ScrollView([.horizontal, .vertical]) {
                     LazyVStack(spacing: 8) {
-                        // Table Header
+                        // Table Header with Liquid Glass
                         HStack {
                             Text("Name").bold().frame(width: 120, alignment: .leading)
                             Text("Address").bold().frame(width: 180, alignment: .leading)
@@ -112,14 +111,15 @@ struct OrdersView: View {
                             Text("Date").bold().frame(width: 100)
                         }
                         .padding(.bottom, 4)
-                        .glassCardBackground(cornerRadius: 12)
-                        
+                        .glassBackground() // <-- native Apple liquid glass
+
                         Divider()
 
-                        // Table Rows - now inline editable
+                        // Table Rows - now inline editable, also liquid glass
                         ForEach(sortedOrders) { order in
                             EditableOrderRow(order: order)
-                                .glassCardBackground(cornerRadius: 12)
+                                .glassBackground()
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 .padding(.horizontal)
                         }
                     }
@@ -140,6 +140,7 @@ struct OrdersView: View {
         ) { _ in }
     }
 
+    // ...exportToPDF unchanged...
     private func exportToPDF() {
         let pdfMetaData = [
             kCGPDFContextCreator: "OrderMate",
@@ -238,26 +239,12 @@ struct EditableOrderRow: View {
             }
         }
         .padding(.vertical, 6)
+        .glassBackground()
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private func save() {
         try? context.save()
-    }
-}
-
-
-// MARK: - Glass Card Modifier (for cards, rows, headers)
-extension View {
-    func glassCardBackground(cornerRadius: CGFloat = 12) -> some View {
-        self.background(
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.12), radius: 7, x: 0, y: 4)
-        )
     }
 }
 

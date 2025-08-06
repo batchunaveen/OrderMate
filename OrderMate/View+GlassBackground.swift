@@ -6,6 +6,7 @@
 //
 
 // View+GlassBackground.swift
+//MARK: - Glass Background Modifier
 import SwiftUI
 
 extension View {
