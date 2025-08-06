@@ -24,91 +24,122 @@ struct OrdersView: View {
         entity: Order.entity(),
         sortDescriptors: [NSSortDescriptor(keyPath: \Order.createdAt, ascending: false)],
         animation: .default
-    )
-    private var orders: FetchedResults<Order>
+    ) private var orders: FetchedResults<Order>
 
     @State private var showExporter = false
     @State private var pdfURL: URL?
+    @State private var showNewOrderForm = false
+    @State private var sortOption: SortOption = .dateDesc
+
+    enum SortOption: String, CaseIterable, Identifiable {
+        case nameAsc = "Name ↑"
+        case nameDesc = "Name ↓"
+        case dateAsc = "Date ↑"
+        case dateDesc = "Date ↓"
+        case amountAsc = "Amount ↑"
+        case amountDesc = "Amount ↓"
+
+        var id: String { self.rawValue }
+    }
+
+    var sortedOrders: [Order] {
+        switch sortOption {
+        case .nameAsc: return orders.sorted { ($0.name ?? "") < ($1.name ?? "") }
+        case .nameDesc: return orders.sorted { ($0.name ?? "") > ($1.name ?? "") }
+        case .dateAsc: return orders.sorted { ($0.createdAt ?? .distantPast) < ($1.createdAt ?? .distantPast) }
+        case .dateDesc: return orders.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+        case .amountAsc: return orders.sorted { $0.amount < $1.amount }
+        case .amountDesc: return orders.sorted { $0.amount > $1.amount }
+        }
+    }
 
     var body: some View {
-        VStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 16) {
-                    ForEach(orders) { order in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(order.name ?? "Unknown")
-                                .font(.headline)
+        ZStack {
+            // Glassy pastel background for both modes
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(.systemIndigo).opacity(0.13),
+                    Color(.systemBackground)
+                ]),
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
-                            Text("Address: \(order.address ?? "N/A")")
-                            Text("Order Type: \(order.type ?? "-")")
-                            Text("Amount: $\(order.amount, specifier: "%.2f")")
-                            Text("Date: \(order.createdAt ?? Date(), style: .date)")
-
-                            Divider()
-
-                            Text("Items:")
-                                .font(.subheadline)
-                                .bold()
-
-                            ForEach(order.itemsArray, id: \.self) { item in
-                                HStack {
-                                    Text("• \(item.name ?? "")")
-                                    Spacer()
-                                    Text("Qty: \(item.quantity)")
-                                }
-                                .font(.callout)
-                            }
+            VStack {
+                HStack {
+                    Picker("Sort By", selection: $sortOption) {
+                        ForEach(SortOption.allCases) { option in
+                            Text(option.rawValue).tag(option)
                         }
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color(.secondarySystemBackground))
-                        )
                     }
-                }
-                .padding()
-            }
+                    .pickerStyle(MenuPickerStyle())
 
-            Button(action: exportToPDF) {
-                Label("Export Orders to PDF", systemImage: "square.and.arrow.up")
-                    .font(.headline)
+                    Spacer()
+
+                    Button(action: exportToPDF) {
+                        Label("Export PDF", systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button(action: {
+                        showNewOrderForm = true
+                    }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button(action: {
+                        print("🗑️ Delete action placeholder")
+                    }) {
+                        Image(systemName: "trash.circle.fill").font(.title2)
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .padding(.horizontal)
+                .padding(.top)
+
+                Divider()
+
+                ScrollView([.horizontal, .vertical]) {
+                    LazyVStack(spacing: 8) {
+                        // Table Header
+                        HStack {
+                            Text("Name").bold().frame(width: 120, alignment: .leading)
+                            Text("Address").bold().frame(width: 180, alignment: .leading)
+                            Text("Type").bold().frame(width: 80)
+                            Text("Amount").bold().frame(width: 80)
+                            Text("Date").bold().frame(width: 100)
+                        }
+                        .padding(.bottom, 4)
+                        .glassCardBackground(cornerRadius: 12)
+                        
+                        Divider()
+
+                        // Table Rows - now inline editable
+                        ForEach(sortedOrders) { order in
+                            EditableOrderRow(order: order)
+                                .glassCardBackground(cornerRadius: 12)
+                                .padding(.horizontal)
+                        }
+                    }
                     .padding()
-                    .frame(maxWidth: .infinity)
+                }
             }
-            .buttonStyle(.borderedProminent)
-            .padding()
         }
         .navigationTitle("Orders")
-        .toolbar {
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                Button(action: {
-                    // Call addOrder()
-                    addOrder()
-                }) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title2)
-                }
-
-                Button(action: {
-                    // Toggle delete mode (you can implement selection)
-                    print("🔴 Delete mode triggered")
-                }) {
-                    Image(systemName: "trash.circle.fill")
-                        .font(.title2)
-                }
-            }
+        .sheet(isPresented: $showNewOrderForm) {
+            NewOrderFormStyled()
+                .environment(\.managedObjectContext, viewContext)
         }
         .fileExporter(
             isPresented: $showExporter,
             document: pdfURL.map { PDFFile(url: $0) },
             contentType: .pdf,
             defaultFilename: "Orders"
-        ) { result in
-            // Handle result if needed
-        }
+        ) { _ in }
     }
 
-    // MARK: - PDF Export Logic
     private func exportToPDF() {
         let pdfMetaData = [
             kCGPDFContextCreator: "OrderMate",
@@ -120,7 +151,6 @@ struct OrdersView: View {
         let pageWidth = 595.2
         let pageHeight = 841.8
         let pdfRenderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight), format: format)
-
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("Orders-\(UUID().uuidString).pdf")
 
         do {
@@ -128,7 +158,7 @@ struct OrdersView: View {
                 context.beginPage()
                 var yOffset: CGFloat = 20
 
-                for order in orders {
+                for order in sortedOrders {
                     let text = """
                     Name: \(order.name ?? "")
                     Address: \(order.address ?? "")
@@ -142,12 +172,13 @@ struct OrdersView: View {
                     -------------------------------
                     """
 
-                    let paragraphStyle = NSMutableParagraphStyle()
-                    paragraphStyle.lineSpacing = 4
-
                     let attrs: [NSAttributedString.Key: Any] = [
                         .font: UIFont.systemFont(ofSize: 12),
-                        .paragraphStyle: paragraphStyle
+                        .paragraphStyle: {
+                            let ps = NSMutableParagraphStyle()
+                            ps.lineSpacing = 4
+                            return ps
+                        }()
                     ]
 
                     let attributedText = NSAttributedString(string: text, attributes: attrs)
@@ -173,12 +204,67 @@ struct OrdersView: View {
     }
 }
 
+// MARK: - Editable Row View
+struct EditableOrderRow: View {
+    @ObservedObject var order: Order
+    @Environment(\.managedObjectContext) var context
+
+    @State private var name: String = ""
+    @State private var address: String = ""
+    @State private var type: String = ""
+    @State private var amount: String = ""
+
+    var body: some View {
+        HStack {
+            TextField("Name", text: $name).frame(width: 120)
+            TextField("Address", text: $address).frame(width: 180)
+            TextField("Type", text: $type).frame(width: 80)
+            TextField("Amount", text: $amount).keyboardType(.decimalPad).frame(width: 80)
+            Text(order.createdAt ?? Date(), style: .date).frame(width: 100)
+        }
+        .onAppear {
+            name = order.name ?? ""
+            address = order.address ?? ""
+            type = order.type ?? ""
+            amount = String(order.amount)
+        }
+        .onChange(of: name) { order.name = name; save() }
+        .onChange(of: address) { order.address = address; save() }
+        .onChange(of: type) { order.type = type; save() }
+        .onChange(of: amount) {
+            if let amt = Float(amount) {
+                order.amount = amt
+                save()
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
+    private func save() {
+        try? context.save()
+    }
+}
 
 
-// MARK: - Order Helper
+// MARK: - Glass Card Modifier (for cards, rows, headers)
+extension View {
+    func glassCardBackground(cornerRadius: CGFloat = 12) -> some View {
+        self.background(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.12), radius: 7, x: 0, y: 4)
+        )
+    }
+}
+
+// MARK: - Helper
 extension Order {
     var itemsArray: [OrderItem] {
-        let set = items as? NSSet ?? []
-        return set.compactMap { $0 as? OrderItem }.sorted { ($0.name ?? "") < ($1.name ?? "") }
+        let set = items as? Set<OrderItem> ?? []
+        return set.sorted { ($0.name ?? "") < ($1.name ?? "") }
     }
 }

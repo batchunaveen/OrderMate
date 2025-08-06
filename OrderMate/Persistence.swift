@@ -6,6 +6,7 @@
 //
 
 import CoreData
+import CoreTransferable
 
 struct PersistenceController {
     static let shared = PersistenceController()
@@ -15,13 +16,20 @@ struct PersistenceController {
         let result = PersistenceController(inMemory: true)
         let viewContext = result.container.viewContext
 
-        // Optional: Create preview data using `Order`
-        for i in 1...5 {
-            let newOrder = Order(context: viewContext)
-            newOrder.id = UUID()
-            newOrder.name = "Preview Order #\(i)"
-            newOrder.createdAt = Date().addingTimeInterval(Double(i * -86400)) // subtract days
-        }
+        // You can optionally create a dummy Order here if needed
+        /*
+        let order = Order(context: viewContext)
+        order.name = "Sample"
+        order.address = "123 Food St"
+        order.type = "online"
+        order.amount = 45.50
+        order.createdAt = Date()
+
+        let item = OrderItem(context: viewContext)
+        item.name = "Butter Naan"
+        item.quantity = 2
+        item.order = order
+        */
 
         do {
             try viewContext.save()
@@ -32,6 +40,7 @@ struct PersistenceController {
 
         return result
     }()
+
 
     let container: NSPersistentContainer
 
